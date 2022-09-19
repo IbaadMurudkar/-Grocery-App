@@ -1,0 +1,130 @@
+import 'package:ecommerce_app/inner_screens/product_detail.dart';
+import 'package:ecommerce_app/services/utils.dart';
+import 'package:ecommerce_app/widgets/heart_btn.dart';
+import 'package:ecommerce_app/widgets/price_widget.dart';
+import 'package:ecommerce_app/widgets/text_widget.dart';
+import 'package:fancy_shimmer_image/fancy_shimmer_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_iconly/flutter_iconly.dart';
+import 'package:provider/provider.dart';
+
+import '../consts/firebase_const.dart';
+import '../models/products_model.dart';
+import '../providers/cart_provider.dart';
+import '../providers/products_provider.dart';
+import '../providers/wishlist_provider.dart';
+import '../services/global_methods.dart';
+
+class OnSaleWidget extends StatefulWidget {
+  const OnSaleWidget({Key? key}) : super(key: key);
+
+  @override
+  State<OnSaleWidget> createState() => _OnSaleWidgetState();
+}
+
+class _OnSaleWidgetState extends State<OnSaleWidget> {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Utils(context).getTheme;
+    final size = Utils(context).getScreenSize;
+    final Color color = Utils(context).color;
+    final productModel = Provider.of<ProductModel>(context);
+    final productProviders = Provider.of<ProductsProvider>(context);
+    final cartProvider = Provider.of<CartProvider>(context);
+    final wishlistProvider = Provider.of<WishlistProvider>(context);
+    bool? isInCart = cartProvider.getCartItems.containsKey(productModel.id);
+    bool? _isInWishlist =
+        wishlistProvider.wishlistItems.containsKey(productModel.id);
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Material(
+        color: Theme.of(context).cardColor.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () {
+            Navigator.pushNamed(context, ProductDetailScreen.routeName,
+                arguments: productModel.id);
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FancyShimmerImage(
+                    imageUrl: productModel.imageUrl,
+                    width: size.width * 0.22,
+                    height: size.width * 0.22,
+                    boxFit: BoxFit.fill,
+                  ),
+                  Column(
+                    children: [
+                      TextWidget(
+                        text: productModel.isPiece ? '1Piece' : '1KG',
+                        color: color,
+                        textSize: 22,
+                        isTitle: true,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          GestureDetector(
+                              onTap: isInCart
+                                  ? null
+                                  : () async{
+                                      final User? user =
+                                          authInstance.currentUser;
+                                      if (user == null) {
+                                        GlobalMethods.errorDialog(
+                                            subtitle:
+                                                'No user found, Please Login first',
+                                            context: context);
+                                        return;
+                                      }
+                                    await  GlobalMethods.addToCart(
+                                          productId: productModel.id,
+                                          quantity: 1,
+                                          context: context);
+                                      await cartProvider.fetchCart();
+                                      // cartProvider.addProductsToCart(
+                                      //     productId: productModel.id,
+                                      //     quantity: 1);
+                                    },
+                              child: Icon(
+                                isInCart ? IconlyBold.bag2 : IconlyLight.bag2,
+                                color: isInCart ? Colors.green : Colors.black,
+                              )),
+                          HeartBTN(
+                            productId: productModel.id,
+                            isInWishlist: _isInWishlist,
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                ],
+              ),
+              PriceWidget(
+                salePrice: productModel.salePrice,
+                price: productModel.price,
+                textPrice: '1',
+                isOnSale: true,
+              ),
+              const SizedBox(height: 5),
+              TextWidget(
+                text: productModel.title,
+                color: color,
+                textSize: 16,
+                isTitle: true,
+              ),
+              const SizedBox(height: 5),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
